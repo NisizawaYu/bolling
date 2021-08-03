@@ -18,8 +18,8 @@ end
 def add_score(pins)
     #一時保存用のスコアに、倒したピンの数を追加する
     @temp << pins
-    #2投分のデータが入っていれば、1フレーム分のスコアとして全体に追加する
-    if @temp.size == 2
+    #2投分のデータが入っているか、1投目がストライクだったら、1フレーム分のスコアとして全体に追加する
+    if @temp.size == 2 || strike?(@temp)
         @scores << @temp
         @temp = []
     end
@@ -30,6 +30,15 @@ def calc_score
     @scores.each.with_index(1) do |score, index|
     #最終フレーム以外でのスペアなら、スコアにボーナスを含めて合計する
     if score?(score) && not_last_frame?(index)
+        #次のフレームもストライクで、なおかつ最終フレーム以外なら、
+        #もう一つ次のフレームの一投目をボーナスの対象にする
+        if strike?(@scores[index]) && not_last_frame?(index + 1)
+            @total_score += 20 + @scores[index + 1].first
+        else
+            @total_score += 10 + @scores[index].inject(:+)
+        end
+        #最終フレーム以外でのスペアなら、スコアにボーナスを含めて合計する
+    elsif spare?(score) && not_last_frame?(index)
         @total_score += calc_spare_bonus(index)
     else
         @total_score += score.inject(:+)
@@ -42,6 +51,11 @@ private
 #スペアかどうか判定する
 def spare?(score)
     score.inject(:+) == 10
+end
+
+#ストライクかどうか判定する
+def strike?(score)
+    score.first == 10
 end
 
 #最終フレームかどうか判定する
@@ -196,6 +210,10 @@ describe "ボウリングのスコア計算" do
             #合計を計算
             @game.calc_score
             #期待する合計 ※()内はボーナス点
+            #10 + 5 + (5) + 4 + (4) + 10 = 38
+            expect(@game.total_score).to eq 38
+        end
+    end
 end
 end
 private
